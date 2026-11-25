@@ -57,10 +57,10 @@ class SettingsActivity : ComponentActivity() {
             AppSettings.autoBestSource = true
             recreate()
         }
-        addRow(binding.leftColumn, "关于飞雪影视", "版本 1.2") {
+        addRow(binding.leftColumn, "关于飞雪影视", "版本 ${currentVersion()}") {
             android.app.AlertDialog.Builder(this)
                 .setTitle("关于飞雪影视")
-                .setMessage("飞雪影视 1.2\n\n支持多数据源聚合搜索、最优线路选择、扫码搜索与多内核播放。\n仅供学习交流，请勿用于商业用途。")
+                .setMessage("飞雪影视 ${currentVersion()}\n\n支持多数据源聚合搜索、最优线路选择、扫码搜索与多内核播放。\n仅供学习交流，请勿用于商业用途。")
                 .setPositiveButton("知道了", null)
                 .show()
         }
@@ -213,7 +213,7 @@ class SettingsActivity : ComponentActivity() {
 
     private fun currentVersion(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName
-    }.getOrNull() ?: "1.1"
+    }.getOrNull() ?: "1.0.0.1"
 
     private fun checkForUpdate() {
         android.widget.Toast.makeText(this, "正在检查更新…", android.widget.Toast.LENGTH_SHORT).show()
@@ -250,21 +250,29 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
+    private var downloadCancelled = false
+
     private fun startDownload(release: com.feixue.tv.update.UpdateChecker.ReleaseInfo) {
         val view = layoutInflater.inflate(R.layout.view_update_progress, null)
         val progressBar = view.findViewById<android.widget.ProgressBar>(R.id.downloadProgress)
         val percentText = view.findViewById<TextView>(R.id.downloadPercent)
         val speedText = view.findViewById<TextView>(R.id.downloadSpeed)
+        downloadCancelled = false
         val dialog = android.app.AlertDialog.Builder(this)
             .setTitle("正在下载 v${release.version}")
             .setView(view)
             .setCancelable(false)
+            .setNegativeButton("取消下载") { _, _ -> downloadCancelled = true }
             .create()
         dialog.show()
 
-        val target = java.io.File(getExternalFilesDir("updates"), "feixue-${release.version}.apk")
+        val target = java.io.File(getExternalFilesDir("updates"), "feixue-film-v${release.version}.apk")
         lifecycleScope.launch {
-            val ok = com.feixue.tv.update.UpdateChecker.download(release.apkUrl, target) { downloaded, total, speed ->
+            val ok = com.feixue.tv.update.UpdateChecker.download(
+                release.apkUrl,
+                target,
+                isCancelled = { downloadCancelled },
+            ) { downloaded, total, speed ->
                 runOnUiThread {
                     if (total > 0) {
                         val percent = (downloaded * 100 / total).toInt().coerceIn(0, 100)
@@ -277,10 +285,12 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
             dialog.dismiss()
-            if (ok) {
-                installApk(target)
-            } else {
-                android.widget.Toast.makeText(
+            when {
+                ok -> installApk(target)
+                downloadCancelled -> android.widget.Toast.makeText(
+                    this@SettingsActivity, "已取消下载", android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                else -> android.widget.Toast.makeText(
                     this@SettingsActivity, "下载失败，请稍后重试", android.widget.Toast.LENGTH_SHORT,
                 ).show()
             }
