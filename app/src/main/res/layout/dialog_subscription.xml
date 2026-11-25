@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="订阅地址或订阅内容"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <EditText
+        android:id="@+id/subscriptionInput"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_input"
+        android:gravity="top|start"
+        android:hint="https://example.com/sub.json 或粘贴 名称,接口地址 多行内容"
+        android:inputType="textMultiLine|textUri"
+        android:padding="12dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary"
+        android:textSize="14sp" />
+</LinearLayout>

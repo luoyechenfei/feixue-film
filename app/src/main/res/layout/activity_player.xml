@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    android:keepScreenOn="true">
+
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/playerView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:resize_mode="fit"
+        app:use_controller="false" />
+
+    <com.feixue.tv.player.IjkVideoView
+        android:id="@+id/ijkView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/infoBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#B00B1220"
+        android:orientation="vertical"
+        android:paddingStart="28dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/playerTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/playerEpisode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/accent"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/playerSource"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/playerProgress"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_gravity="center"
+        android:indeterminateTint="@color/accent" />
+
+    <LinearLayout
+        android:id="@+id/errorPanel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_card"
+        android:gravity="center"
+        android:minWidth="420dp"
+        android:orientation="vertical"
+        android:padding="28dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/errorText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/retryButton"
+                android:layout_width="112dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_button"
+                android:stateListAnimator="@null"
+                android:text="重试"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/playerBackButton"
+                android:layout_width="112dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="12dp"
+                android:background="@drawable/bg_option"
+                android:stateListAnimator="@null"
+                android:text="返回"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/controlBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#D90B1220"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/positionText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="64dp"
+                android:text="00:00"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <SeekBar
+                android:id="@+id/seekBar"
+                android:layout_width="0dp"
+                android:layout_height="28dp"
+                android:layout_weight="1"
+                android:max="1000"
+                android:progressBackgroundTint="#40FFFFFF"
+                android:progressTint="@color/accent"
+                android:thumbTint="@color/accent" />
+
+            <TextView
+                android:id="@+id/durationText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:minWidth="64dp"
+                android:text="00:00"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/prevEpisodeButton"
+                    style="@style/ControlButton"
+                    android:text="上一集" />
+
+                <TextView
+                    android:id="@+id/playPauseButton"
+                    style="@style/ControlButton"
+                    android:minWidth="56dp"
+                    android:text="暂停" />
+
+                <TextView
+                    android:id="@+id/nextEpisodeButton"
+                    style="@style/ControlButton"
+                    android:text="下一集" />
+
+                <TextView
+                    android:id="@+id/episodeButton"
+                    style="@style/ControlButton"
+                    android:text="选集" />
+
+                <TextView
+                    android:id="@+id/speedButton"
+                    style="@style/ControlButton"
+                    android:text="1.0x" />
+
+                <TextView
+                    android:id="@+id/replayButton"
+                    style="@style/ControlButton"
+                    android:text="重播" />
+
+                <TextView
+                    android:id="@+id/retryPlayButton"
+                    style="@style/ControlButton"
+                    android:text="重试" />
+
+                <TextView
+                    android:id="@+id/aspectButton"
+                    style="@style/ControlButton"
+                    android:text="适应" />
+
+                <TextView
+                    android:id="@+id/engineButton"
+                    style="@style/ControlButton"
+                    android:text="Exo" />
+
+                <TextView
+                    android:id="@+id/decodeButton"
+                    style="@style/ControlButton"
+                    android:text="硬解" />
+
+                <TextView
+                    android:id="@+id/subtitleButton"
+                    style="@style/ControlButton"
+                    android:text="字幕" />
+
+                <TextView
+                    android:id="@+id/audioButton"
+                    style="@style/ControlButton"
+                    android:text="音轨" />
+
+                <TextView
+                    android:id="@+id/resolutionButton"
+                    style="@style/ControlButton"
+                    android:text="自动" />
+
+                <TextView
+                    android:id="@+id/introButton"
+                    style="@style/ControlButton"
+                    android:text="片头" />
+
+                <TextView
+                    android:id="@+id/outroButton"
+                    style="@style/ControlButton"
+                    android:text="片尾" />
+
+                <TextView
+                    android:id="@+id/externalButton"
+                    style="@style/ControlButton"
+                    android:text="外部" />
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
+</FrameLayout>
