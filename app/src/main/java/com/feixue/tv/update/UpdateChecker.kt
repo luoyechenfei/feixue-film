@@ -15,8 +15,9 @@ object UpdateChecker {
     const val REPO = "feixue-film"
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
     data class ReleaseInfo(
@@ -71,10 +72,32 @@ object UpdateChecker {
         return false
     }
 
-    /** 流式下载，回调已下载字节、总字节与实时速度（字节/秒） */
+    /** 下载通道：GitHub 直连失败时自动切换加速代理 */
+    private fun candidateUrls(url: String): List<String> = listOf(
+        url,
+        "https://gh-proxy.com/$url",
+        "https://ghfast.top/$url",
+    )
+
+    /** 流式下载，回调已下载字节、总字节与实时速度（字节/秒），支持取消与多通道重试 */
     suspend fun download(
         url: String,
         target: File,
+        isCancelled: () -> Boolean = { false },
+        onProgress: (downloaded: Long, total: Long, speedBps: Long) -> Unit,
+    ): Boolean {
+        for (candidate in candidateUrls(url)) {
+            if (isCancelled()) return false
+            if (downloadOnce(candidate, target, isCancelled, onProgress)) return true
+        }
+        target.delete()
+        return false
+    }
+
+    private suspend fun downloadOnce(
+        url: String,
+        target: File,
+        isCancelled: () -> Boolean,
         onProgress: (downloaded: Long, total: Long, speedBps: Long) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
         runCatching {
@@ -91,6 +114,11 @@ object UpdateChecker {
                         var lastTime = System.nanoTime()
                         var lastBytes = 0L
                         while (true) {
+                            if (isCancelled()) {
+                                output.close()
+                                target.delete()
+                                return@withContext false
+                            }
                             val read = input.read(buffer)
                             if (read < 0) break
                             output.write(buffer, 0, read)
@@ -107,8 +135,10 @@ object UpdateChecker {
                         onProgress(downloaded, total, 0L)
                     }
                 }
-                true
+                downloadedSizeValid(target)
             }
         }.getOrDefault(false)
     }
+
+    private fun downloadedSizeValid(target: File): Boolean = target.length() > 1024 * 1024
 }
