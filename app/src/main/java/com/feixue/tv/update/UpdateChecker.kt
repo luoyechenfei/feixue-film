@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 /** GitHub Release 更新检测与 APK 下载 */
 object UpdateChecker {
     const val OWNER = "luoyechenfei"
-    const val REPO = "feixue-tv"
+    const val REPO = "feixue-film"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
