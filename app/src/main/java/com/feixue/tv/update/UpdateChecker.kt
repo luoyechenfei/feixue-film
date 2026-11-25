@@ -28,7 +28,16 @@ object UpdateChecker {
         val apkSize: Long,
     )
 
-    suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
+    suspend fun fetchLatest(): ReleaseInfo? {
+        repeat(3) { attempt ->
+            val result = fetchLatestOnce()
+            if (result != null) return result
+            if (attempt < 2) kotlinx.coroutines.delay(1500L)
+        }
+        return null
+    }
+
+    private suspend fun fetchLatestOnce(): ReleaseInfo? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
             .header("Accept", "application/vnd.github+json")
