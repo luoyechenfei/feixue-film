@@ -37,9 +37,22 @@ object UpdateChecker {
         return null
     }
 
-    private suspend fun fetchLatestOnce(): ReleaseInfo? = withContext(Dispatchers.IO) {
+    private fun apiUrls(): List<String> {
+        val api = "https://api.github.com/repos/$OWNER/$REPO/releases/latest"
+        return listOf(api, "https://gh-proxy.com/$api", "https://ghfast.top/$api")
+    }
+
+    private suspend fun fetchLatestOnce(): ReleaseInfo? {
+        for (url in apiUrls()) {
+            val result = fetchFrom(url)
+            if (result != null) return result
+        }
+        return null
+    }
+
+    private suspend fun fetchFrom(url: String): ReleaseInfo? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
+            .url(url)
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "FeixueTV-Android")
             .build()
@@ -66,10 +79,10 @@ object UpdateChecker {
                     apkSize = apkSize,
                 )
             }
+        }.onFailure {
+            android.util.Log.w("UpdateChecker", "fetchLatest failed: ${it.javaClass.simpleName}: ${it.message}")
         }.getOrNull()
     }
-
-    /** 语义化版本比较：latest 高于 current 时返回 true */
     fun isNewer(latest: String, current: String): Boolean {
         val a = latest.split('.').map { it.toIntOrNull() ?: 0 }
         val b = current.split('.').map { it.toIntOrNull() ?: 0 }
