@@ -1,0 +1,7 @@
+{
+  "versionCode": 10006,
+  "versionName": "1.0.0.6",
+  "size": 13699917,
+  "apk": "https://raw.githubusercontent.com/luoyechenfei/feixue-film/main/releases/feixue-film-v1.0.0.6.apk",
+  "notes": "1. 修复 http 数据源被系统安全策略拦截导致导入失败\n2. 订阅导入支持多仓递归与导航页自动提取配置链接\n3. 更新检测改为仓库清单分发，不再依赖 GitHub API 限速"
+}

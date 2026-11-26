@@ -42,12 +42,49 @@ object UpdateChecker {
         return listOf(api, "https://gh-proxy.com/$api", "https://ghfast.top/$api")
     }
 
+    /** 仓库内分发的版本清单（不依赖 GitHub API，避免限速） */
+    private fun manifestUrls(): List<String> {
+        val raw = "https://raw.githubusercontent.com/$OWNER/$REPO/main/releases/latest.json"
+        return listOf(raw, "https://gh-proxy.com/$raw", "https://ghfast.top/$raw")
+    }
+
     private suspend fun fetchLatestOnce(): ReleaseInfo? {
+        for (url in manifestUrls()) {
+            val result = fetchManifest(url)
+            if (result != null) return result
+        }
+        // 清单不可用时回退到 Release 接口
         for (url in apiUrls()) {
             val result = fetchFrom(url)
             if (result != null) return result
         }
         return null
+    }
+
+    private suspend fun fetchManifest(url: String): ReleaseInfo? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "FeixueTV-Android")
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                val text = response.body?.string().orEmpty()
+                if (!text.trimStart().startsWith("{")) return@withContext null
+                val json = JSONObject(text)
+                val apkUrl = json.optString("apk")
+                if (apkUrl.isEmpty()) return@withContext null
+                ReleaseInfo(
+                    version = json.optString("versionName"),
+                    title = json.optString("versionName"),
+                    notes = json.optString("notes"),
+                    apkUrl = apkUrl,
+                    apkSize = json.optLong("size"),
+                )
+            }
+        }.onFailure {
+            android.util.Log.w("UpdateChecker", "fetchManifest failed: ${it.javaClass.simpleName}: ${it.message}")
+        }.getOrNull()
     }
 
     private suspend fun fetchFrom(url: String): ReleaseInfo? = withContext(Dispatchers.IO) {
