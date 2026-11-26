@@ -400,10 +400,19 @@ class PlayerActivity : ComponentActivity() {
         if (decodeMode == AppSettings.DECODE_SOFT) {
             factory.setMediaCodecSelector(softwareCodecSelector)
         }
-        val exoPlayer = ExoPlayer.Builder(this, factory).build()
+        val exoPlayer = ExoPlayer.Builder(this, factory)
+            .setLoadControl(
+                androidx.media3.exoplayer.DefaultLoadControl.Builder()
+                    // 起播阈值调小、缓冲上限调大：更快出画面，网络抖动时也不易卡顿
+                    .setBufferDurationsMs(20_000, 60_000, 800, 1_500)
+                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .build(),
+            )
+            .build()
         player = exoPlayer
         binding.playerView.player = exoPlayer
         exoPlayer.addListener(playerListener)
+        exoPlayer.setHandleAudioBecomingNoisy(true)
         exoPlayer.setPlaybackParameters(PlaybackParameters(speed))
         exoPlayer.setMediaItems(episodes.map { MediaItem.fromUri(it.url) })
         exoPlayer.seekTo(currentIndex, resumeMs.coerceAtLeast(0L))

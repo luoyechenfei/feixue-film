@@ -13,6 +13,12 @@ import java.net.URLDecoder
  */
 class QrPushServer(
     private val preferredPort: Int,
+    private val pageTitle: String = "飞雪影视 · 扫码搜索",
+    private val heading: String = "飞雪影视",
+    private val hint: String = "输入片名、演员或导演，推送到电视搜索",
+    private val placeholder: String = "例如：两京十五日",
+    private val actionText: String = "推送到电视",
+    private val resultHint: String = "电视端已开始搜索，请查看电视画面。",
     private val onKeyword: (String) -> Unit,
 ) {
     private var serverSocket: ServerSocket? = null
@@ -139,7 +145,7 @@ class QrPushServer(
         <!doctype html>
         <html><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>飞雪影视 · 扫码搜索</title>
+        <title>$pageTitle</title>
         <style>
         body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#09111d;color:#f4f8fc;display:flex;min-height:100vh;align-items:center;justify-content:center}
         .card{width:100%;max-width:420px;padding:28px;box-sizing:border-box}
@@ -149,11 +155,11 @@ class QrPushServer(
         button{width:100%;height:50px;margin-top:14px;border:0;border-radius:10px;background:#7ce8f2;color:#071018;font-size:17px;font-weight:600}
         </style></head>
         <body><div class="card">
-        <h1>飞雪影视</h1>
-        <p>输入片名、演员或导演，推送到电视搜索</p>
+        <h1>$heading</h1>
+        <p>$hint</p>
         <form method="post" action="/push">
-        <input name="kw" placeholder="例如：两京十五日" autocomplete="off" autofocus>
-        <button type="submit">推送到电视</button>
+        <input name="kw" placeholder="$placeholder" autocomplete="off" autofocus>
+        <button type="submit">$actionText</button>
         </form>
         </div></body></html>
     """.trimIndent()
@@ -172,8 +178,8 @@ class QrPushServer(
         </style></head>
         <body><div class="card">
         <h1>已推送「${escape(keyword)}」</h1>
-        <p>电视端已开始搜索，请查看电视画面。</p>
-        <a href="/">继续搜索</a>
+        <p>$resultHint</p>
+        <a href="/">继续</a>
         </div></body></html>
     """.trimIndent()
 

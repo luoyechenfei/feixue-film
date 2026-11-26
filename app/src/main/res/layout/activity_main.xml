@@ -71,6 +71,16 @@
             android:textSize="16sp" />
     </LinearLayout>
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/subCategoryList"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:visibility="gone" />
+
     <LinearLayout
         android:id="@+id/filterBar"
         android:layout_width="match_parent"

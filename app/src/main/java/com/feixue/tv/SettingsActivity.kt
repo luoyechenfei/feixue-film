@@ -5,12 +5,15 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.core.content.ContextCompat
 import com.feixue.tv.data.source.SourceManager
 import com.feixue.tv.databinding.ActivitySettingsBinding
+import com.feixue.tv.search.QrCodeUtil
+import com.feixue.tv.search.QrPushServer
 import com.feixue.tv.settings.AppSettings
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -18,6 +21,8 @@ import kotlinx.coroutines.launch
 class SettingsActivity : ComponentActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private var configValue: TextView? = null
+    private var configPushServer: QrPushServer? = null
+    private var configDialog: android.app.AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,7 +31,7 @@ class SettingsActivity : ComponentActivity() {
         binding.backButton.setOnClickListener { finish() }
 
         configValue = addRow(binding.configContainer, "配置地址", SourceManager.active().url) {
-            startActivity(Intent(this, SourceActivity::class.java))
+            showConfigQrDialog()
         }
 
         addGroupTitle(binding.leftColumn, "首页")
@@ -60,7 +65,15 @@ class SettingsActivity : ComponentActivity() {
         addRow(binding.leftColumn, "关于飞雪影视", "版本 ${currentVersion()}") {
             android.app.AlertDialog.Builder(this)
                 .setTitle("关于飞雪影视")
-                .setMessage("飞雪影视 ${currentVersion()}\n\n支持多数据源聚合搜索、最优线路选择、扫码搜索与多内核播放。\n仅供学习交流，请勿用于商业用途。")
+                .setMessage(
+                    buildString {
+                        append("飞雪影视 ${currentVersion()}\n\n")
+                        append("支持多数据源聚合搜索、最优线路选择、扫码搜索与多内核播放。\n")
+                        append("仅供学习交流，请勿用于商业用途。\n\n")
+                        append("项目地址：$PROJECT_URL")
+                    },
+                )
+                .setNeutralButton("项目地址") { _, _ -> openProjectPage() }
                 .setPositiveButton("知道了", null)
                 .show()
         }
@@ -107,6 +120,63 @@ class SettingsActivity : ComponentActivity() {
         val active = SourceManager.active()
         binding.sourceSummary.text = "当前源：${active.name}"
         configValue?.text = active.url
+    }
+
+    private fun showConfigQrDialog() {
+        val server = QrPushServer(
+            AppSettings.qrPushPort,
+            pageTitle = "飞雪影视 · 推送配置地址",
+            heading = "推送配置地址",
+            hint = "输入 Apple CMS 接口地址，推送到电视",
+            placeholder = "http://your-host/api.php/provide/vod/at/json",
+            actionText = "推送到电视",
+            resultHint = "电视端的配置地址已更新。",
+        ) { pushed ->
+            runOnUiThread { applyPushedConfig(pushed) }
+        }
+        if (!server.start()) {
+            android.widget.Toast.makeText(this, "推送服务启动失败，请稍后重试", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        configPushServer = server
+
+        val view = layoutInflater.inflate(R.layout.dialog_qr_push, null)
+        view.findViewById<ImageView>(R.id.qrImage).setImageBitmap(QrCodeUtil.generate(server.accessUrl))
+        view.findViewById<TextView>(R.id.qrUrlText).text = server.accessUrl
+        view.findViewById<TextView>(R.id.qrHint).text =
+            "手机与电视需在同一局域网，扫码后输入新的接口地址即可推送到电视"
+
+        configDialog = android.app.AlertDialog.Builder(this)
+            .setTitle("手机扫码推送配置地址")
+            .setView(view)
+            .setNegativeButton("关闭", null)
+            .create()
+            .apply {
+                setOnDismissListener {
+                    configPushServer?.stop()
+                    configPushServer = null
+                    configDialog = null
+                }
+                show()
+            }
+    }
+
+    private fun applyPushedConfig(value: String) {
+        val url = SourceManager.normalizeUrl(value.trim())
+        if (url.isBlank()) return
+        SourceManager.upsert(SourceManager.active().copy(url = url))
+        configValue?.text = url
+        configDialog?.dismiss()
+        android.widget.Toast.makeText(this, "配置地址已更新", android.widget.Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openProjectPage() {
+        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(PROJECT_URL))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { startActivity(intent) }
+            .onFailure {
+                android.widget.Toast.makeText(this, PROJECT_URL, android.widget.Toast.LENGTH_LONG).show()
+            }
     }
 
     private fun addGroupTitle(parent: LinearLayout, title: String) {
@@ -313,5 +383,9 @@ class SettingsActivity : ComponentActivity() {
         bytes >= 1024 * 1024 -> String.format("%.1f MB", bytes / 1024f / 1024f)
         bytes >= 1024 -> String.format("%.0f KB", bytes / 1024f)
         else -> "$bytes B"
+    }
+
+    private companion object {
+        const val PROJECT_URL = "https://github.com/luoyechenfei/feixue-film"
     }
 }
