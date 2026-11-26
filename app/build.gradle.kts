@@ -14,8 +14,8 @@ android {
         applicationId = "com.feixue.tv"
         minSdk = 21
         targetSdk = 35
-        versionCode = 10003
-        versionName = "1.0.0.3"
+        versionCode = 10004
+        versionName = "1.0.0.4"
     }
 
     buildFeatures {

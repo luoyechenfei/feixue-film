@@ -30,8 +30,8 @@ class SettingsActivity : ComponentActivity() {
         setContentView(binding.root)
         binding.backButton.setOnClickListener { finish() }
 
-        configValue = addRow(binding.configContainer, "配置地址", SourceManager.active().url) {
-            showConfigQrDialog()
+        configValue = addRow(binding.configContainer, "配置地址", configSummary()) {
+            showConfigChooser()
         }
 
         addGroupTitle(binding.leftColumn, "首页")
@@ -60,6 +60,9 @@ class SettingsActivity : ComponentActivity() {
             AppSettings.showRecommend = true
             AppSettings.aggregateSearch = true
             AppSettings.autoBestSource = true
+            // 数据源一并恢复为仅内置默认地址
+            SourceManager.resetToDefault()
+            android.widget.Toast.makeText(this, "已恢复默认设置与默认地址", android.widget.Toast.LENGTH_SHORT).show()
             recreate()
         }
         addRow(binding.leftColumn, "关于飞雪影视", "版本 ${currentVersion()}") {
@@ -119,18 +122,44 @@ class SettingsActivity : ComponentActivity() {
         super.onResume()
         val active = SourceManager.active()
         binding.sourceSummary.text = "当前源：${active.name}"
-        configValue?.text = active.url
+        configValue?.text = configSummary()
+    }
+
+    private fun configSummary(): String {
+        val count = SourceManager.all().size
+        return "共 $count 个 · 当前 ${SourceManager.active().name}"
+    }
+
+    private fun showConfigChooser() {
+        val items = arrayOf(
+            "手机 / 电脑网页添加",
+            "遥控器输入地址",
+            "地址列表（编辑 / 删除 / 设为默认）",
+        )
+        android.app.AlertDialog.Builder(this)
+            .setTitle("配置地址")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> showConfigQrDialog()
+                    1 -> startActivity(
+                        Intent(this, SourceActivity::class.java)
+                            .putExtra(SourceActivity.EXTRA_AUTO_ADD, true),
+                    )
+                    else -> startActivity(Intent(this, SourceActivity::class.java))
+                }
+            }
+            .show()
     }
 
     private fun showConfigQrDialog() {
         val server = QrPushServer(
             AppSettings.qrPushPort,
-            pageTitle = "飞雪影视 · 推送配置地址",
-            heading = "推送配置地址",
-            hint = "输入 Apple CMS 接口地址，推送到电视",
-            placeholder = "http://your-host/api.php/provide/vod/at/json",
+            pageTitle = "飞雪影视 · 添加配置地址",
+            heading = "添加配置地址",
+            hint = "手机扫码，或在电脑浏览器打开本页地址，填好后点击推送",
+            placeholder = "接口地址或影视仓订阅链接（.json / .txt）",
             actionText = "推送到电视",
-            resultHint = "电视端的配置地址已更新。",
+            resultHint = "电视端已添加该地址。",
         ) { pushed ->
             runOnUiThread { applyPushedConfig(pushed) }
         }
@@ -144,10 +173,10 @@ class SettingsActivity : ComponentActivity() {
         view.findViewById<ImageView>(R.id.qrImage).setImageBitmap(QrCodeUtil.generate(server.accessUrl))
         view.findViewById<TextView>(R.id.qrUrlText).text = server.accessUrl
         view.findViewById<TextView>(R.id.qrHint).text =
-            "手机与电视需在同一局域网，扫码后输入新的接口地址即可推送到电视"
+            "手机扫码，或在电脑浏览器输入上面的地址；\n可填单个接口地址，也可填影视仓 / TVBox 订阅链接（.json / .txt）"
 
         configDialog = android.app.AlertDialog.Builder(this)
-            .setTitle("手机扫码推送配置地址")
+            .setTitle("手机 / 电脑添加配置地址")
             .setView(view)
             .setNegativeButton("关闭", null)
             .create()
@@ -161,13 +190,55 @@ class SettingsActivity : ComponentActivity() {
             }
     }
 
-    private fun applyPushedConfig(value: String) {
-        val url = SourceManager.normalizeUrl(value.trim())
-        if (url.isBlank()) return
-        SourceManager.upsert(SourceManager.active().copy(url = url))
-        configValue?.text = url
-        configDialog?.dismiss()
-        android.widget.Toast.makeText(this, "配置地址已更新", android.widget.Toast.LENGTH_SHORT).show()
+    private fun applyPushedConfig(raw: String) {
+        val value = raw.trim()
+        if (value.isBlank()) return
+        lifecycleScope.launch {
+            val added = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                addAddress(value)
+            }
+            configValue?.text = configSummary()
+            configDialog?.dismiss()
+            android.widget.Toast.makeText(
+                this@SettingsActivity,
+                if (added.isEmpty()) "地址无效，未添加" else "已添加 ${added.size} 个地址",
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+        }
+    }
+
+    /** 影视仓/TVBox 订阅链接会展开成多个源，普通链接按单个源添加 */
+    private fun addAddress(value: String): List<com.feixue.tv.data.source.VideoSource> {
+        val looksConfig = SourceManager.looksLikeConfigUrl(value)
+        val fromConfig = if (looksConfig) {
+            runCatching {
+                val request = okhttp3.Request.Builder().url(value).build()
+                com.feixue.tv.data.remote.ApiClient.okHttpClient.newCall(request).execute().use { resp ->
+                    if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
+                    resp.body?.string().orEmpty()
+                }
+            }.getOrNull()?.let { SourceManager.parseSubscription(it) }.orEmpty()
+        } else {
+            emptyList()
+        }
+        if (fromConfig.isNotEmpty()) {
+            fromConfig.forEach { SourceManager.upsert(it) }
+            SourceManager.setActive(fromConfig.first().id)
+            return fromConfig
+        }
+        if (looksConfig) return emptyList()
+
+        val url = SourceManager.normalizeUrl(value)
+        if (!url.startsWith("http")) return emptyList()
+        val existing = SourceManager.all().firstOrNull { it.url == url }
+        val source = existing ?: com.feixue.tv.data.source.VideoSource(
+            id = SourceManager.createId(),
+            name = android.net.Uri.parse(url).host?.removePrefix("www.") ?: "第三方源",
+            url = url,
+        )
+        SourceManager.upsert(source)
+        SourceManager.setActive(source.id)
+        return listOf(source)
     }
 
     private fun openProjectPage() {
