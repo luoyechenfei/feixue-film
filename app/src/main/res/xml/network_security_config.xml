@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- 影视源大量使用 http 明文接口，必须全局放行，否则导入/播放都会报 CLEARTEXT 错误 -->
+    <base-config cleartextTrafficPermitted="true" />
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">nas.luoyechenfei.com</domain>
+        <domain includeSubdomains="true">nas.luoyechenfei.com</domain>
     </domain-config>
 </network-security-config>

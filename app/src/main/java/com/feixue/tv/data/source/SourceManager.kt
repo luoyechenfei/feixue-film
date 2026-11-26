@@ -206,6 +206,32 @@ object SourceManager {
         return result.distinctBy { it.url }.take(100)
     }
 
+    /** 解析多仓索引：{"urls":[{"name":"仓名","url":"子仓配置地址"}]} */
+    fun parseMultiConfigUrls(text: String): List<Pair<String, String>> {
+        val result = mutableListOf<Pair<String, String>>()
+        runCatching {
+            val root = JsonParser.parseString(text).asJsonObject
+            listOf("urls", "configs", "multi").forEach { key ->
+                val array = root.getAsJsonArray(key) ?: return@forEach
+                array.forEach { element ->
+                    if (element.isJsonPrimitive) {
+                        val url = element.asString
+                        if (url.startsWith("http", true)) result.add("子仓" to url)
+                        return@forEach
+                    }
+                    val obj = element.asJsonObject
+                    val url = obj.get("url")?.takeIf { !it.isJsonNull }?.asString
+                        ?: obj.get("api")?.takeIf { !it.isJsonNull }?.asString
+                    if (url.isNullOrBlank() || !url.startsWith("http", true)) return@forEach
+                    val name = obj.get("name")?.takeIf { !it.isJsonNull }?.asString
+                        ?.takeIf { it.isNotBlank() } ?: "子仓"
+                    result.add(name to url)
+                }
+            }
+        }
+        return result.distinctBy { it.second }
+    }
+
     /** 判断链接是否可能是影视仓 / TVBox 订阅配置 */
     fun looksLikeConfigUrl(url: String): Boolean {
         val path = url.substringBefore('?').substringBefore('#').lowercase()

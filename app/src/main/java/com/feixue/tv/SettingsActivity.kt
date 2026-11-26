@@ -194,42 +194,27 @@ class SettingsActivity : ComponentActivity() {
         val value = raw.trim()
         if (value.isBlank()) return
         lifecycleScope.launch {
-            val added = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val message = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 addAddress(value)
             }
             configValue?.text = configSummary()
             configDialog?.dismiss()
-            android.widget.Toast.makeText(
-                this@SettingsActivity,
-                if (added.isEmpty()) "地址无效，未添加" else "已添加 ${added.size} 个地址",
-                android.widget.Toast.LENGTH_SHORT,
-            ).show()
+            android.widget.Toast.makeText(this@SettingsActivity, message, android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
-    /** 影视仓/TVBox 订阅链接会展开成多个源，普通链接按单个源添加 */
-    private fun addAddress(value: String): List<com.feixue.tv.data.source.VideoSource> {
-        val looksConfig = SourceManager.looksLikeConfigUrl(value)
-        val fromConfig = if (looksConfig) {
-            runCatching {
-                val request = okhttp3.Request.Builder().url(value).build()
-                com.feixue.tv.data.remote.ApiClient.okHttpClient.newCall(request).execute().use { resp ->
-                    if (!resp.isSuccessful) throw IllegalStateException("HTTP ${resp.code}")
-                    resp.body?.string().orEmpty()
-                }
-            }.getOrNull()?.let { SourceManager.parseSubscription(it) }.orEmpty()
-        } else {
-            emptyList()
+    /** 订阅链接（含单仓/多仓）展开成多个源，普通链接按单个源添加 */
+    private suspend fun addAddress(value: String): String {
+        if (SourceManager.looksLikeConfigUrl(value)) {
+            val result = com.feixue.tv.data.source.SourceImporter.fromUrl(value)
+            if (result.sources.isNotEmpty()) {
+                result.sources.forEach { SourceManager.upsert(it) }
+                SourceManager.setActive(result.sources.first().id)
+            }
+            return result.message()
         }
-        if (fromConfig.isNotEmpty()) {
-            fromConfig.forEach { SourceManager.upsert(it) }
-            SourceManager.setActive(fromConfig.first().id)
-            return fromConfig
-        }
-        if (looksConfig) return emptyList()
-
         val url = SourceManager.normalizeUrl(value)
-        if (!url.startsWith("http")) return emptyList()
+        if (!url.startsWith("http")) return "地址无效，未添加"
         val existing = SourceManager.all().firstOrNull { it.url == url }
         val source = existing ?: com.feixue.tv.data.source.VideoSource(
             id = SourceManager.createId(),
@@ -238,7 +223,7 @@ class SettingsActivity : ComponentActivity() {
         )
         SourceManager.upsert(source)
         SourceManager.setActive(source.id)
-        return listOf(source)
+        return "已添加 ${source.name}"
     }
 
     private fun openProjectPage() {
