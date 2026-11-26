@@ -24,9 +24,6 @@ import com.feixue.tv.databinding.ActivityDetailBinding
 import com.feixue.tv.player.PlaySource
 import com.feixue.tv.player.PlaySourceParser
 import com.feixue.tv.settings.AppSettings
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -229,19 +226,24 @@ class DetailActivity : ComponentActivity() {
         if (candidates.size < 2) return
 
         lifecycleScope.launch {
-            val best = coroutineScope {
-                candidates.map { (index, url) ->
-                    async {
-                        val start = SystemClock.elapsedRealtime()
-                        val ok = runCatching {
-                            speedClient.newCall(
-                                Request.Builder().url(url).header("Range", "bytes=0-2047").build(),
-                            ).execute().use { it.isSuccessful }
-                        }.getOrDefault(false)
-                        if (ok) index to (SystemClock.elapsedRealtime() - start) else null
-                    }
-                }.awaitAll().filterNotNull().minByOrNull { it.second }?.first
+            // 所有线路并行测速，谁最先响应成功就用谁，不再等待最慢的一条
+            val channel = kotlinx.coroutines.channels.Channel<Int>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+            val jobs = candidates.map { (index, url) ->
+                launch {
+                    val ok = runCatching {
+                        speedClient.newCall(
+                            Request.Builder().url(url).header("Range", "bytes=0-2047").build(),
+                        ).execute().use { it.isSuccessful }
+                    }.getOrDefault(false)
+                    if (ok) channel.send(index)
+                }
             }
+            val best = kotlinx.coroutines.withTimeoutOrNull(BEST_SOURCE_TIMEOUT_MS) {
+                channel.receive()
+            }
+            jobs.forEach { it.cancel() }
+            channel.close()
+
             if (best != null && !userPickedSource && detailLoaded && !isFinishing) {
                 selectSource(best)
                 renderSourceTabs(best)
@@ -285,6 +287,7 @@ class DetailActivity : ComponentActivity() {
     companion object {
         private const val EXTRA_VOD_ID = "vod_id"
         private const val EXTRA_SOURCE_ID = "source_id"
+        private const val BEST_SOURCE_TIMEOUT_MS = 2_500L
 
         fun start(context: Context, vodId: Int, sourceId: String = "") {
             context.startActivity(

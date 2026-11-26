@@ -30,6 +30,17 @@ object ApiClient {
         .writeTimeout(15, TimeUnit.SECONDS)
         .build()
 
+    private val doubanApi: DoubanApi by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://movie.douban.com/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(DoubanApi::class.java)
+    }
+
+    fun douban(): DoubanApi = doubanApi
+
     fun apiFor(source: VideoSource): VodApi {
         val url = source.url
         lastApi?.let { if (lastUrl == url) return it }
