@@ -13,5 +13,5 @@
     android:minWidth="76dp"
     android:paddingStart="14dp"
     android:paddingEnd="14dp"
-    android:textColor="@color/text_primary"
+    android:textColor="@color/option_text"
     android:textSize="15sp" />

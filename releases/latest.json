@@ -1,7 +1,7 @@
 {
-  "versionCode": 10006,
-  "versionName": "1.0.0.6",
-  "size": 13699917,
-  "apk": "https://raw.githubusercontent.com/luoyechenfei/feixue-film/main/releases/feixue-film-v1.0.0.6.apk",
-  "notes": "1. 修复 http 数据源被系统安全策略拦截导致导入失败\n2. 订阅导入支持多仓递归与导航页自动提取配置链接\n3. 更新检测改为仓库清单分发，不再依赖 GitHub API 限速"
+  "versionCode": 10007,
+  "versionName": "1.0.0.7",
+  "size": 13702641,
+  "apk": "https://raw.githubusercontent.com/luoyechenfei/feixue-film/main/releases/feixue-film-v1.0.0.7.apk",
+  "notes": "1. 详情页选集方块选中态改为亮青实心 + 高对比文字\n2. 播放线路标签支持遥控器左右切换，切换后焦点保持在线路行"
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 已选中：深色文字压在亮青底上 -->
+    <item android:state_selected="true" android:color="@color/background" />
+    <!-- 遥控器焦点：白字压在深青底上 -->
+    <item android:state_focused="true" android:color="@android:color/white" />
+    <item android:color="@color/text_primary" />
+</selector>

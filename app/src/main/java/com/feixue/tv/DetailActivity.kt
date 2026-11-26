@@ -3,7 +3,6 @@ package com.feixue.tv
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.Paint
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.View
@@ -167,23 +166,23 @@ class DetailActivity : ComponentActivity() {
             val tab = TextView(this).apply {
                 text = if (index == bestIndex) "${source.name}·最优" else source.name
                 textSize = 14f
-                setPadding(dp(8), dp(6), dp(8), dp(6))
+                setPadding(dp(14), dp(7), dp(14), dp(7))
+                background = ContextCompat.getDrawable(this@DetailActivity, R.drawable.bg_source_tab)
+                setTextColor(ContextCompat.getColorStateList(this@DetailActivity, R.color.source_tab_text))
                 isFocusable = true
                 isClickable = true
-                setTextColor(
-                    ContextCompat.getColor(
-                        this@DetailActivity,
-                        if (selected) R.color.accent else R.color.text_secondary,
-                    ),
-                )
-                paintFlags = if (selected) {
-                    paintFlags or Paint.UNDERLINE_TEXT_FLAG
-                } else {
-                    paintFlags and Paint.UNDERLINE_TEXT_FLAG.inv()
+                isSelected = selected
+                setOnFocusChangeListener { view, hasFocus ->
+                    view.animate().scaleX(if (hasFocus) 1.06f else 1f)
+                        .scaleY(if (hasFocus) 1.06f else 1f)
+                        .setDuration(120)
+                        .start()
                 }
                 setOnClickListener {
                     userPickedSource = true
                     selectSource(index)
+                    // 标签会被重建，切换后把焦点放回当前线路，避免焦点跳回顶部
+                    binding.sourceTabs.post { binding.sourceTabs.getChildAt(index)?.requestFocus() }
                 }
             }
             val params = LinearLayout.LayoutParams(
