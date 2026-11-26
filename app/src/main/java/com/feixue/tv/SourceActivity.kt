@@ -7,16 +7,13 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.feixue.tv.data.remote.ApiClient
+import com.feixue.tv.data.source.SourceImporter
 import com.feixue.tv.data.source.SourceManager
 import com.feixue.tv.data.source.VideoSource
 import com.feixue.tv.databinding.ActivitySourcesBinding
 import com.feixue.tv.databinding.DialogSourceBinding
 import com.feixue.tv.databinding.DialogSubscriptionBinding
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.Request
 
 class SourceActivity : ComponentActivity() {
     private lateinit var binding: ActivitySourcesBinding
@@ -143,34 +140,17 @@ class SourceActivity : ComponentActivity() {
         }
         binding.sourceProgress.visibility = View.VISIBLE
         lifecycleScope.launch {
-            try {
-                val content = if (text.startsWith("http", true)) {
-                    withContext(Dispatchers.IO) { fetch(text) }
-                } else {
-                    text
-                }
-                val parsed = SourceManager.parseSubscription(content)
-                if (parsed.isEmpty()) {
-                    Toast.makeText(this@SourceActivity, "未解析到有效数据源", Toast.LENGTH_LONG).show()
-                } else {
-                    parsed.forEach { SourceManager.upsert(it) }
-                    refresh()
-                    Toast.makeText(this@SourceActivity, "成功导入 ${parsed.size} 个数据源", Toast.LENGTH_LONG).show()
-                }
-            } catch (error: Exception) {
-                val reason = error.message ?: "请检查网络"
-                Toast.makeText(this@SourceActivity, "订阅导入失败：$reason", Toast.LENGTH_LONG).show()
-            } finally {
-                binding.sourceProgress.visibility = View.GONE
+            val result = if (text.startsWith("http", true)) {
+                SourceImporter.fromUrl(text)
+            } else {
+                SourceImporter.fromContent(text)
             }
-        }
-    }
-
-    private fun fetch(url: String): String {
-        val request = Request.Builder().url(url).build()
-        return ApiClient.okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
-            response.body?.string().orEmpty()
+            binding.sourceProgress.visibility = View.GONE
+            if (result.sources.isNotEmpty()) {
+                result.sources.forEach { SourceManager.upsert(it) }
+                refresh()
+            }
+            Toast.makeText(this@SourceActivity, result.message(), Toast.LENGTH_LONG).show()
         }
     }
 

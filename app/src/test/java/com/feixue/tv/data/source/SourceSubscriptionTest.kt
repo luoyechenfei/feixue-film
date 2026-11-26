@@ -61,4 +61,24 @@ class SourceSubscriptionTest {
         assertTrue(SourceManager.looksLikeConfigUrl("http://x.example.com/sub.txt?token=1"))
         assertFalse(SourceManager.looksLikeConfigUrl("http://x.example.com/api.php/provide/vod/at/json"))
     }
+
+    @Test
+    fun `parse multi config urls supports urls and configs keys`() {
+        val json = """
+            {
+              "urls": [
+                {"name":"仓A","url":"https://a.example.com/1.json"},
+                {"name":"仓B","url":"https://b.example.com/2.json"},
+                {"name":"无效","url":"csp_xxx"}
+              ],
+              "configs": [{"url":"https://c.example.com/3.json"}]
+            }
+        """.trimIndent()
+
+        val subs = SourceManager.parseMultiConfigUrls(json)
+
+        assertEquals(3, subs.size)
+        assertEquals("仓A" to "https://a.example.com/1.json", subs[0])
+        assertEquals("子仓" to "https://c.example.com/3.json", subs[2])
+    }
 }
