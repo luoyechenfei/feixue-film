@@ -37,6 +37,9 @@ class SourceActivity : ComponentActivity() {
         binding.subscribeButton.setOnClickListener { showSubscribeDialog() }
         binding.sourceState.setOnClickListener { refresh() }
         refresh()
+        if (intent.getBooleanExtra(EXTRA_AUTO_ADD, false)) {
+            showEditDialog(null)
+        }
     }
 
     override fun onResume() {
@@ -169,5 +172,9 @@ class SourceActivity : ComponentActivity() {
             if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
             response.body?.string().orEmpty()
         }
+    }
+
+    companion object {
+        const val EXTRA_AUTO_ADD = "auto_add"
     }
 }

@@ -78,6 +78,18 @@ object SourceManager {
 
     fun createId(): String = "src-" + UUID.randomUUID().toString().take(8)
 
+    /** 恢复出厂：只保留自带默认源（默认地址），并设为当前源 */
+    fun resetToDefault() {
+        val builtin = VideoSource(
+            id = "builtin",
+            name = "飞雪自带源",
+            url = DEFAULT_URL,
+            builtin = true,
+        )
+        writeList(listOf(builtin))
+        prefs.edit().putString(KEY_ACTIVE, builtin.id).apply()
+    }
+
     fun normalizeUrl(raw: String): String {
         var url = raw.trim()
         if (url.isEmpty()) return url
@@ -95,14 +107,19 @@ object SourceManager {
     }
 
     /**
-     * 支持三种订阅格式：
-     * 1. JSON 数组 [{"name":"源名","url":"接口地址"}]
-     * 2. 每行 "源名,接口地址" 或 "源名|接口地址" 或 "源名 接口地址"
-     * 3. 每行一个接口地址
+     * 支持以下订阅格式：
+     * 1. 影视仓 / TVBox 配置：{"sites":[{"name":"源名","api":"接口地址","type":1}]}
+     * 2. JSON 数组 [{"name":"源名","url":"接口地址"}]
+     * 3. 每行 "源名,接口地址" 或 "源名|接口地址" 或 "源名 接口地址"
+     * 4. 每行一个接口地址
      */
     fun parseSubscription(text: String): List<VideoSource> {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return emptyList()
+        if (trimmed.startsWith("{")) {
+            val fromTvBox = parseTvBoxSites(trimmed)
+            if (fromTvBox.isNotEmpty()) return fromTvBox
+        }
         if (trimmed.startsWith("[")) {
             val result = mutableListOf<VideoSource>()
             runCatching {
@@ -156,6 +173,43 @@ object SourceManager {
             }
         }
         return result
+    }
+
+    /**
+     * 解析影视仓 / TVBox 配置里的 sites 数组。
+     * 只保留直接给出 http 接口的 CMS 站点（type 0/1 等），
+     * csp_ 开头这类需要内置爬虫的源无法使用，自动跳过。
+     */
+    private fun parseTvBoxSites(text: String): List<VideoSource> {
+        val result = mutableListOf<VideoSource>()
+        runCatching {
+            val root = JsonParser.parseString(text).asJsonObject
+            val sites = root.getAsJsonArray("sites") ?: return@runCatching
+            sites.forEach { element ->
+                val obj = element.asJsonObject
+                val api = obj.get("api")?.takeIf { !it.isJsonNull }?.asString.orEmpty()
+                if (!api.startsWith("http://", true) && !api.startsWith("https://", true)) {
+                    return@forEach
+                }
+                if (api.contains("/share/", true)) return@forEach
+                val name = obj.get("name")?.takeIf { !it.isJsonNull }?.asString
+                    ?.takeIf { it.isNotBlank() } ?: "第三方源"
+                result.add(
+                    VideoSource(
+                        id = createId(),
+                        name = name,
+                        url = normalizeUrl(api),
+                    ),
+                )
+            }
+        }
+        return result.distinctBy { it.url }.take(100)
+    }
+
+    /** 判断链接是否可能是影视仓 / TVBox 订阅配置 */
+    fun looksLikeConfigUrl(url: String): Boolean {
+        val path = url.substringBefore('?').substringBefore('#').lowercase()
+        return path.endsWith(".json") || path.endsWith(".txt") || path.endsWith(".yaml")
     }
 
     private fun readList(): List<VideoSource> {
